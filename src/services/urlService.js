@@ -20,26 +20,37 @@ const errors = {
 
 async function generateShortUrl(longUrl, customAlias = null) {
   try {
-    const id = generateUUID();
-    const shortUrl = encodeBase62(parseInt(id.replace(/-/g, ""), 16));
-    const urlData = { id, longUrl, shortUrl };
+    let attempts = 0;
+    const maxAttempts = 5;
+    let shortUrl = null;
 
-    const isExistingUrl = await URL.findOne({
-      where: { shortUrl: shortUrl, isActive: true },
-    });
-
-    if (isExistingUrl) {
-      throw errors.internalServerError("Short URL already exists");
+    if (!customAlias) {
+      while (attempts < maxAttempts) {
+        const id = generateUUID();
+        shortUrl = encodeBase62(parseInt(id.replace(/-/g, ""), 16));
+        const isExistingUrl = await URL.findOne({
+          where: { shortUrl: shortUrl, isActive: true },
+        });
+        if (!isExistingUrl) {
+          break;
+        }
+        attempts++;
+      }
+      const isExistingUrl = await URL.findOne({
+        where: { shortUrl: shortUrl, isActive: true },
+      });
+      if (isExistingUrl) {
+        throw errors.internalServerError("Short URL already exists");
+      }
     }
-
     if (customAlias) {
       const existingAlias = await URL.findOne({ where: { customAlias } });
       if (existingAlias) {
         throw errors.aliasAlreadyTaken;
       }
-      urlData.customAlias = customAlias;
+      shortUrl = customAlias;
       await redisClient.set(customAlias, longUrl);
-    } else {
+    } else {  
       await redisClient.set(shortUrl, longUrl);
     }
 
@@ -49,6 +60,7 @@ async function generateShortUrl(longUrl, customAlias = null) {
       isActive: true,
       ipAddress: "12",
     });
+
     return { statusCode: 201, data: createdUrl };
   } catch (error) {
     if (error.statusCode) {

@@ -1,16 +1,17 @@
 import { randomUUID } from "crypto";
 
-const BASE62 = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+const CHAR_SET =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~";
 
 export function encodeBase62(num) {
-  if (num === 0) return BASE62[0];
+  if (num === 0) return CHAR_SET[0];
   let result = "";
-  const base = BASE62.length;
+  const base = CHAR_SET.length;
   while (num > 0) {
-    result = BASE62[num % base] + result;
+    result = CHAR_SET[num % base] + result;
     num = Math.floor(num / base);
   }
-  return result;
+  return result.length > 7 ? result.slice(0, 7) : result;
 }
 
 export function generateUUID() {
